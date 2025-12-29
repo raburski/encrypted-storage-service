@@ -1,0 +1,43 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  createdAt     DateTime        @default(now()) @map("created_at")
+  encryptedChunks EncryptedChunk[]
+
+  @@map("users")
+}
+
+// Unified Chunk Storage (all collections use chunks)
+// Small collections = 1 chunk (e.g., "chunk-main")
+// Large collections = multiple chunks (e.g., "chunk-2024-01", "chunk-2024-02")
+model EncryptedChunk {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  collectionName String  @map("collection_name")  // e.g., "stays", "swarm-checkins"
+  chunkId       String   @map("chunk_id")         // e.g., "chunk-main", "chunk-2024-01"
+  encryptedData Bytes    @map("encrypted_data")   // Encrypted chunk data
+  iv            Bytes
+  metadata      String?  // Optional metadata string
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, collectionName, chunkId])  // One row per user+collection+chunk
+  @@index([userId, collectionName])            // Fast lookup of all chunks in collection
+  @@index([userId, collectionName, chunkId])
+  @@index([userId, collectionName, updatedAt]) // For sync queries (chunks since date)
+  @@map("encrypted_chunks")
+}
+
