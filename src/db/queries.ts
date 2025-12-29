@@ -25,6 +25,11 @@ export async function upsertChunk(
   iv: Buffer,
   metadata: string | null = null
 ) {
+  // Convert Buffer to Uint8Array for Prisma 6.x compatibility
+  // Create a new ArrayBuffer copy to ensure correct type
+  const encryptedDataArray = new Uint8Array(encryptedData) as Uint8Array
+  const ivArray = new Uint8Array(iv) as Uint8Array
+  
   const existing = await prisma.encryptedChunk.findUnique({
     where: {
       userId_collectionName_chunkId: {
@@ -39,8 +44,8 @@ export async function upsertChunk(
     return prisma.encryptedChunk.update({
       where: { id: existing.id },
       data: {
-        encryptedData,
-        iv,
+        encryptedData: encryptedDataArray as any,
+        iv: ivArray as any,
         metadata,
         version: existing.version + 1,
       },
@@ -51,8 +56,8 @@ export async function upsertChunk(
         userId,
         collectionName,
         chunkId,
-        encryptedData,
-        iv,
+        encryptedData: encryptedDataArray as any,
+        iv: ivArray as any,
         metadata,
         version: 1,
       },
@@ -173,9 +178,10 @@ export async function patchChunk(
   }
 
   // Build update data object (only include fields that are provided)
+  // Use Prisma's update input type to ensure type compatibility
   const updateData: {
-    encryptedData?: Buffer
-    iv?: Buffer
+    encryptedData?: Uint8Array
+    iv?: Uint8Array
     metadata?: string | null
     version: number
   } = {
@@ -183,10 +189,12 @@ export async function patchChunk(
   }
 
   if (encryptedData !== undefined) {
-    updateData.encryptedData = encryptedData
+    // Convert Buffer to Uint8Array for Prisma 6.x compatibility
+    updateData.encryptedData = new Uint8Array(encryptedData) as any
   }
   if (iv !== undefined) {
-    updateData.iv = iv
+    // Convert Buffer to Uint8Array for Prisma 6.x compatibility
+    updateData.iv = new Uint8Array(iv) as any
   }
   if (metadata !== undefined) {
     updateData.metadata = metadata || null
@@ -194,7 +202,7 @@ export async function patchChunk(
 
   return prisma.encryptedChunk.update({
     where: { id: existing.id },
-    data: updateData,
+    data: updateData as any, // Type assertion needed due to Prisma's strict typing
   })
 }
 
