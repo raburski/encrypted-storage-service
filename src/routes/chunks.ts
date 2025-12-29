@@ -13,11 +13,16 @@ import {
 const router = Router()
 router.use(authenticateApiKey)
 
-// All routes extract user_id from path
-router.use('/:user_id', extractUserId)
+// Extract user_id from path (it's in the parent route /:user_id)
+// This middleware runs for all routes in this router
+router.use((req, res, next) => {
+  // user_id is already in req.params from the parent route
+  // extractUserId will handle it
+  extractUserId(req as any, res, next)
+})
 
 // POST /data/:user_id/:collection/chunks
-router.post('/:user_id/:collection/chunks', async (req: AuthRequest, res) => {
+router.post('/:collection/chunks', async (req: AuthRequest, res) => {
   try {
     const { collection } = req.params
     const userId = req.userId!
@@ -61,7 +66,7 @@ router.post('/:user_id/:collection/chunks', async (req: AuthRequest, res) => {
 })
 
 // GET /data/:user_id/:collection/chunks/:chunkId
-router.get('/:user_id/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
+router.get('/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
   try {
     const { collection, chunkId } = req.params
     const userId = req.userId!
@@ -87,7 +92,7 @@ router.get('/:user_id/:collection/chunks/:chunkId', async (req: AuthRequest, res
 })
 
 // GET /data/:user_id/:collection/chunks (list all chunks)
-router.get('/:user_id/:collection/chunks', async (req: AuthRequest, res) => {
+router.get('/:collection/chunks', async (req: AuthRequest, res) => {
   try {
     const { collection } = req.params
     const userId = req.userId!
@@ -109,7 +114,7 @@ router.get('/:user_id/:collection/chunks', async (req: AuthRequest, res) => {
 })
 
 // DELETE /data/:user_id/:collection/chunks/:chunkId
-router.delete('/:user_id/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
+router.delete('/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
   try {
     const { collection, chunkId } = req.params
     const userId = req.userId!
@@ -123,7 +128,7 @@ router.delete('/:user_id/:collection/chunks/:chunkId', async (req: AuthRequest, 
 })
 
 // GET /data/:user_id/:collection/chunks/since?since={iso_timestamp}
-router.get('/:user_id/:collection/chunks/since', async (req: AuthRequest, res) => {
+router.get('/:collection/chunks/since', async (req: AuthRequest, res) => {
   try {
     const { collection } = req.params
     const userId = req.userId!
@@ -158,7 +163,7 @@ router.get('/:user_id/:collection/chunks/since', async (req: AuthRequest, res) =
 })
 
 // GET /data/:user_id/chunks/all?since={iso_timestamp}
-router.get('/:user_id/chunks/all', async (req: AuthRequest, res) => {
+router.get('/chunks/all', async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!
     const sinceParam = req.query.since as string | undefined
@@ -192,7 +197,7 @@ router.get('/:user_id/chunks/all', async (req: AuthRequest, res) => {
 })
 
 // PATCH /data/:user_id/:collection/chunks/:chunkId
-router.patch('/:user_id/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
+router.patch('/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
   try {
     const { collection, chunkId } = req.params
     const userId = req.userId!
