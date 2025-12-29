@@ -68,13 +68,41 @@ See the [full documentation](../wander-garden/docs/encrypted-storage-microservic
 
 ### Railway
 
-1. Create Railway project and connect GitHub repository
-2. Add PostgreSQL service
-3. Configure environment variables:
-   - `DATABASE_URL` (auto-provided by Railway)
-   - `API_KEY` (generate secure random string)
-   - `PORT` (auto-set by Railway)
-4. Railway will auto-deploy on git push
+1. **Create Railway project**:
+   - New project → Deploy from GitHub
+   - Connect repository: `raburski/encrypted-storage-service`
+
+2. **Add PostgreSQL service**:
+   - Add PostgreSQL database
+   - Railway provides `DATABASE_URL` automatically
+
+3. **Configure environment variables**:
+   - `DATABASE_URL` (auto-provided by Railway for PostgreSQL)
+   - `API_KEY` (generate a secure random string)
+   - `PORT` (Railway sets this automatically)
+   - `NODE_ENV=production`
+
+4. **Configure build and start commands**:
+   - **Build Command**: `npm run build`
+     - This runs `prisma generate && tsc` (generates Prisma client and compiles TypeScript)
+   - **Start Command**: `npm run start:prod`
+     - This runs `prisma migrate deploy && node dist/index.js` (applies migrations then starts server)
+
+5. **Deploy**:
+   - Railway auto-deploys on git push to main branch
+   - Migrations run automatically on each deployment
+
+### Manual Migration (if needed)
+
+If you need to run migrations manually:
+
+```bash
+# In production
+npx prisma migrate deploy
+
+# In development
+npx prisma migrate dev
+```
 
 ## License
 
