@@ -11,15 +11,8 @@ import {
 } from '../db/queries'
 
 const router = Router()
-router.use(authenticateApiKey)
-
-// Extract user_id from path (it's in the parent route /:user_id)
-// This middleware runs for all routes in this router
-router.use((req, res, next) => {
-  // user_id is already in req.params from the parent route
-  // extractUserId will handle it
-  extractUserId(req as any, res, next)
-})
+// Note: authenticateApiKey and extractUserId are already called in parent router
+// user_id is already extracted and available as req.userId
 
 // POST /data/:user_id/:collection/chunks
 router.post('/:collection/chunks', async (req: AuthRequest, res) => {
@@ -91,7 +84,44 @@ router.get('/:collection/chunks/:chunkId', async (req: AuthRequest, res) => {
   }
 })
 
+// GET /data/:user_id/chunks/all?since={iso_timestamp}
+// This MUST come BEFORE /:collection/chunks to avoid route conflicts
+// Express matches routes in order, so specific routes should come first
+router.get('/chunks/all', async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!
+    const sinceParam = req.query.since as string | undefined
+
+    const sinceDate = sinceParam ? new Date(sinceParam) : null
+    if (sinceParam && isNaN(sinceDate!.getTime())) {
+      return res.status(400).json({ error: 'Invalid `since` timestamp' })
+    }
+
+    const { chunks, latestSyncTimestamp } = await getAllChunksForUser(
+      userId,
+      sinceDate
+    )
+
+    res.json({
+      chunks: chunks.map((c) => ({
+        collection: c.collectionName,
+        chunk_id: c.chunkId,
+        encrypted: Array.from(c.encryptedData),
+        iv: Array.from(c.iv),
+        metadata: c.metadata || null,
+        version: c.version,
+        updated_at: c.updatedAt,
+      })),
+      latest_sync: latestSyncTimestamp ? latestSyncTimestamp.toISOString() : null,
+    })
+  } catch (error) {
+    console.error('Error getting all chunks:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // GET /data/:user_id/:collection/chunks (list all chunks)
+// This comes AFTER /chunks/all to avoid route conflicts
 router.get('/:collection/chunks', async (req: AuthRequest, res) => {
   try {
     const { collection } = req.params
@@ -158,40 +188,6 @@ router.get('/:collection/chunks/since', async (req: AuthRequest, res) => {
     })
   } catch (error) {
     console.error('Error getting chunks since timestamp:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
-})
-
-// GET /data/:user_id/chunks/all?since={iso_timestamp}
-router.get('/chunks/all', async (req: AuthRequest, res) => {
-  try {
-    const userId = req.userId!
-    const sinceParam = req.query.since as string | undefined
-
-    const sinceDate = sinceParam ? new Date(sinceParam) : null
-    if (sinceParam && isNaN(sinceDate!.getTime())) {
-      return res.status(400).json({ error: 'Invalid `since` timestamp' })
-    }
-
-    const { chunks, latestSyncTimestamp } = await getAllChunksForUser(
-      userId,
-      sinceDate
-    )
-
-    res.json({
-      chunks: chunks.map((c) => ({
-        collection: c.collectionName,
-        chunk_id: c.chunkId,
-        encrypted: Array.from(c.encryptedData),
-        iv: Array.from(c.iv),
-        metadata: c.metadata || null,
-        version: c.version,
-        updated_at: c.updatedAt,
-      })),
-      latest_sync: latestSyncTimestamp ? latestSyncTimestamp.toISOString() : null,
-    })
-  } catch (error) {
-    console.error('Error getting all chunks:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
