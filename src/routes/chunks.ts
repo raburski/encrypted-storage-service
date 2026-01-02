@@ -52,9 +52,18 @@ router.post('/:collection/chunks', async (req: AuthRequest, res) => {
       version: result.version,
       updated_at: result.updatedAt
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving chunk:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    })
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 })
 

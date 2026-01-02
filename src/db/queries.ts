@@ -30,6 +30,18 @@ export async function upsertChunk(
   const encryptedDataArray = new Uint8Array(encryptedData) as Uint8Array
   const ivArray = new Uint8Array(iv) as Uint8Array
   
+  // Ensure user exists (create if not exists)
+  // Note: We use userId as email since we don't have email from NextAuth session
+  // In production, you might want to pass email from Next.js API route
+  await prisma.user.upsert({
+    where: { id: userId },
+    update: {},
+    create: {
+      id: userId,
+      email: `${userId}@wander.garden`, // Placeholder email
+    },
+  })
+  
   const existing = await prisma.encryptedChunk.findUnique({
     where: {
       userId_collectionName_chunkId: {
