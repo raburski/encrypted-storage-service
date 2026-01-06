@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { randomUUID } from 'crypto'
 import { authenticateApiKey, extractUserId, AuthRequest } from '../middleware/auth'
 import {
   getChunk,
@@ -21,9 +22,10 @@ router.post('/:collection/chunks', async (req: AuthRequest, res) => {
     const userId = req.userId!
     const { chunk_id, encrypted, iv, metadata } = req.body
 
-    if (!chunk_id || typeof chunk_id !== 'string') {
-      return res.status(400).json({ error: 'chunk_id is required' })
-    }
+    // Generate chunk_id if not provided
+    const finalChunkId = chunk_id && typeof chunk_id === 'string' 
+      ? chunk_id 
+      : randomUUID()
 
     if (!Array.isArray(encrypted) || !Array.isArray(iv)) {
       return res.status(400).json({ error: 'Invalid data format' })
@@ -40,7 +42,7 @@ router.post('/:collection/chunks', async (req: AuthRequest, res) => {
     const result = await upsertChunk(
       userId,
       collection,
-      chunk_id,
+      finalChunkId,
       Buffer.from(encrypted),
       Buffer.from(iv),
       metadata || null
@@ -48,7 +50,7 @@ router.post('/:collection/chunks', async (req: AuthRequest, res) => {
 
     res.json({
       success: true,
-      chunk_id,
+      chunk_id: finalChunkId,
       version: result.version,
       updated_at: result.updatedAt
     })
